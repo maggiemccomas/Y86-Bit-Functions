@@ -1,0 +1,280 @@
+# A Y86 assembly code program that computes various bit and math functions on an array
+# the array is hardcoded to contain values 4, -9, 13, 0 although these values can be changed
+# Maggie McComas
+
+.pos 0x0
+
+main:
+    irmovl stack, %esp          # set stack ptr
+    irmovl input, %esi          # input
+    irmovl output, %edi         # output
+
+mainloop:
+    mrmovl (%esi), %ecx         # %ecx hold values from input
+    
+    irmovl $0, %edx             # get ready to test value for 0
+    addl %ecx, %edx             # add just to set condition codes
+    je end                      # val == 0, so we're done
+    
+    rmmovl %ecx, (%edi)         # store value in output
+    irmovl $4, %edx             # get ready to set next address in output
+    addl   %edx, %edi           # set new output address
+    
+    pushl %ecx                  # save value
+    pushl %ecx                  # push argument
+    
+    call neg
+    
+    popl %ecx                    # pop argument
+    popl %ecx                    # restore value
+    
+    rmmovl %eax, (%edi)         # store return value from neg in output
+    irmovl $4, %edx             # get ready to set next address in output
+    addl   %edx, %edi           # set new output address
+    irmovl $0, %eax
+    
+    pushl %ecx                  # save value
+    pushl %ecx                  # push argument
+    
+    call square
+    
+    popl %ecx                    # pop argument
+    popl %ecx                    # restore value
+    
+    rmmovl %eax, (%edi)         # store return value from square in output
+    irmovl $4, %edx             # get ready to set next address in output
+    addl   %edx, %edi           # set new output address
+    
+    rrmovl %ecx, %edx           # edx (num2) = ecx (num)
+    irmovl $0, %eax             # eax = 0
+    addl %edx, %eax             # eax = eax + edx
+    jge positive                # if (num > 0) jump to positive
+    
+    pushl %edx                  # save value
+    pushl %edx                  # push argument
+    
+    call neg
+    
+    popl %edx                   # pop argument
+    popl %edx                   # restore value
+    
+    rrmovl %eax, %edx           # store return value from new in edx
+
+positive:
+    irmovl $0, %eax             # eax = 0
+    
+    pushl %edx                  # save value
+    pushl %edx                  # push argument
+    
+    call rfact
+    
+    popl %edx                   # pop argument
+    popl %edx                   # restore value
+    
+    rmmovl %eax, (%edi)         # store return value from rfact in output
+    irmovl $4, %edx             # get ready to set next address in output
+    addl   %edx, %edi           # set new output address
+ 
+statusfirst:                    # not necessary but helps with readability
+    irmovl $0, %ebx             # ebx (status) = 0
+    irmovl $1, %eax             # eax = 1
+    andl %ecx, %eax             # ecx (num) & eax (1)
+    je statussecond             # if !(num & 1) jump to statussecond 
+    
+    irmovl $1, %eax             # eax = 1
+    addl %eax, %ebx             # ebx (status) = (status) + 1
+
+statussecond:
+    irmovl $0, %eax             # eax = 0
+    addl %ecx, %eax             # eax = eax + ecx (num)
+    jge statusthird             # if (num >= 0) go to statusthird (next if)
+    
+    irmovl $2, %eax             # eax = 2
+    addl %eax, %ebx             # ebx (status) = ebx + 2
+
+statusthird:
+    irmovl $0, %eax             # eax = 0
+    pushl %ecx                  # save value
+    pushl %ecx                  # push argument
+    
+    call square
+    
+    popl %ecx                   # pop argument
+    popl %ecx                   # restore value
+    
+    irmovl $100, %edx           # edx = 100
+    subl %edx, %eax             # eax (square of num) = eax - 100
+    jle statusfourth            # if (square of num < 100) go to statusfourth
+    
+    irmovl $4, %eax             # eax = 4
+    addl %eax, %ebx             # ebx (status) = ebx + 4
+    
+statusfourth:
+    irmovl $16, %eax            # eax = 16
+    addl %eax, %ebx             # ebx (status) = ebx + 16
+    
+    rmmovl %ebx, (%edi)         # store status value in output
+    irmovl $4, %edx             # get ready to set next address in output
+    addl   %edx, %edi           # set new output address
+    
+    irmovl $286331153, %eax     # eax = 286331153 (in hex row of 1s)
+    rmmovl %eax, (%edi)         # store eax in output (row of 1s)
+    irmovl $4, %edx             # get ready to set next address in output
+    addl   %edx, %edi           # set new output address
+    
+    addl   %edx, %esi           # set new input address
+    
+    jmp    mainloop
+
+end:
+    halt
+   
+   
+neg:
+    pushl %ebp                  # prologue
+    rrmovl %esp, %ebp
+    
+    pushl %edi                  # save %edi value
+    
+    mrmovl 8(%ebp), %edi        # edi = param / num
+    irmovl $0, %eax             # eax = 0
+    subl %edi, %eax             # eax = 0 - num (return value in eax)
+    
+    popl %edi                   # restore value
+    
+    popl %ebp                   # epilogue
+    ret
+
+rmult:
+    pushl %ebp                  # prologue
+    rrmovl %esp, %ebp
+    
+    pushl %edi                  # save %edi value
+
+    mrmovl 8(%ebp), %ecx        # ecx = param / int x
+    mrmovl 12(%ebp), %edx       # edx = param / int y
+    
+    irmovl $0, %edi             # edi = 0
+    subl %edx, %edi             # edi = 0 - edx (y)
+    je rmultend                 # if (y == 0) go to rmultend
+    
+    rrmovl %edx, %edi           # edi = edx (y)
+    subl %ecx, %edi             # edi = edi (y) - ecx (x)
+    jg greater                  # if (x < y) go to greater
+    
+    addl %ecx, %eax             # eax = eax + edx (x)
+    irmovl $1, %edi             # edi = 1
+    subl %edi, %edx             # ecx = ecx (y) - 1
+    jmp recur                   # recursive call
+    
+greater:                        # swaps x and y values so x is larger
+    rrmovl %ecx, %edi           # edi = ecx (x)
+    rrmovl %edx, %ecx           # ecx (x) = edx (y)
+    rrmovl %edi, %edx           # edx (y) = edi (x)
+
+recur:
+    pushl %edx                  # push arg2 (y)
+    pushl %ecx                  # push arg1 (x)
+    
+    call rmult
+    
+    popl %ecx                   # pop arg1 (x)
+    popl %edx                   # pop arg2 (y)
+    
+rmultend:
+    popl %edi                   # restore value
+    
+    popl %ebp                   # epilogue
+    ret
+
+square:
+    pushl %ebp                  # prologue
+    rrmovl %esp, %ebp
+    
+    pushl %edi                  # save %edi value
+    
+    mrmovl 8(%ebp), %ecx        # ecx = param / num
+    irmovl $0, %edi             # edi = 0
+    addl %ecx, %edi             # edi = edi + ecx (num)
+    jge squareend               # if (num >= 0) go to squareend
+    
+    pushl %ecx                  # push argument (num)
+    
+    call neg
+    
+    popl %ecx                   # pop argument (num)
+    
+    rrmovl %eax, %ecx           # store return value from neg in ecx
+    
+squareend:
+    rrmovl %ecx, %edx           # edx = ecx (abs of num)
+    
+    irmovl $0, %eax             # eax = 0
+    
+    pushl %ecx                  # push arg2 (y/ abs of num)
+    pushl %edx                  # push arg1 (x/ abs of num)
+    
+    call rmult
+    
+    popl %edx                   # pop arg1
+    popl %ecx                   # pop arg2
+    
+    popl %edi                   # restore value
+    
+    popl %ebp                   # epilogue
+    ret
+
+rfact:
+    pushl %ebp                  # prologue
+    rrmovl %esp, %ebp
+    
+    pushl %edi                  # save %edi value
+    pushl %ecx                  # save %ecx value
+
+    mrmovl 8(%ebp), %edi        # edi = param / n
+    irmovl $1, %edx             # edx = 1
+    irmovl $1, %eax             # eax = 1
+    subl %edi, %edx             # edx = 1 - edi
+    je rfactend                 # if (n == 1) go to rfactend
+    
+    subl %eax, %edi             # edi = n -1
+    
+    pushl %edi                  # push argument (n)
+    
+    call rfact
+
+    popl %edi                   # pop argument
+    
+    rrmovl %eax, %ecx           # store return value from rfact in ecx
+    
+    pushl %ecx                  # push arg2 (rfact(n-1))
+    pushl %edi                  # push arg1 (y/ n)
+    
+    call rmult
+    
+    popl %edi                   # pop arg1
+    popl %ecx                   # pop arg2
+
+rfactend:
+    popl %ecx                   # restore value
+    popl %edi                   # restore value
+    
+    popl %ebp                   # epilogue
+    ret
+    
+    
+    
+.align 4
+
+input:
+.long 4
+.long -9
+.long 13
+.long 0
+
+output:
+    
+.pos 0x800
+stack:
+
+
